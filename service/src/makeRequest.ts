@@ -1,0 +1,36 @@
+type CustomError = Error & {
+  status: number
+}
+
+const getBaseURI = (): string => {
+  if (!process.env.CHATE2EE_API_URL) {
+    console.warn('CHATE2EE_API_URL is not set');
+  }
+  const BASE_URI = process.env.CHATE2EE_API_URL || 'https://chat-e2ee-2.azurewebsites.net';
+  return BASE_URI;
+}
+const baseUri = getBaseURI();
+const makeRequest = async (url: string, { method = 'GET', body }: { method: string, body?: any }) => {
+  const res = await window.fetch(`${baseUri}/api/${url}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    ...(body && { body: JSON.stringify(body) })
+  });
+
+  if (!res.ok) {
+    const json = res.headers.get('Content-Type').includes('application/json')
+      ? await res.json()
+      : await res.text();
+
+    const err = new Error(json.message || json.error || JSON.stringify(json)) as CustomError;
+    err.status = res.status;
+
+    throw err;
+  }
+
+  return await res.json();
+};
+
+export default makeRequest;
